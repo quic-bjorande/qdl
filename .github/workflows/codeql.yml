@@ -20,7 +20,7 @@ jobs:
       - name: Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxml2-dev libusb-1.0-0-dev
+          sudo apt-get install -y libcmocka-dev libxml2-dev libusb-1.0-0-dev
 
       - name: CodeQL init
         uses: github/codeql-action/init@v3

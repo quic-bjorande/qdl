@@ -14,6 +14,7 @@ ver   = env_v != '' ? env_v : git_v
 libusb_dep = dependency('libusb-1.0')
 libxml_dep = dependency('libxml-2.0')
 libzip_dep = dependency('libzip')
+cmocka_dep = dependency('cmocka')
 help2man = find_program('help2man', required: false)
 
 # Common include dirs
@@ -84,6 +85,23 @@ qdl_ks_exe = executable('qdl-ks',
 )
 
 # -- tests ---
+json_unit_test_sources = files(
+  'tests/test_json.c',
+  'json.c',
+)
+
+json_unit_test_exe = executable('test_json',
+  sources : json_unit_test_sources + [version_h],
+  dependencies : [libxml_dep, libzip_dep, cmocka_dep],
+  include_directories : inc
+)
+
+test(
+  'Unit json',
+  json_unit_test_exe,
+  protocol : 'tap'
+)
+
 test(
   'VIP table generation',
   find_program('bash'),
