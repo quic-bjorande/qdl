@@ -84,6 +84,26 @@ qdl_ks_exe = executable('qdl-ks',
 )
 
 # -- tests ---
+cmocka_dep = dependency('cmocka', required : get_option('unit_tests'))
+if cmocka_dep.found()
+  json_unit_test_sources = files(
+    'tests/test_json.c',
+    'json.c',
+  )
+
+  json_unit_test_exe = executable('test_json',
+    sources : json_unit_test_sources + [version_h],
+    dependencies : [libxml_dep, libzip_dep, cmocka_dep],
+    include_directories : inc
+  )
+
+  test(
+    'Unit json',
+    json_unit_test_exe,
+    protocol : 'tap'
+  )
+endif
+
 test(
   'VIP table generation',
   find_program('bash'),

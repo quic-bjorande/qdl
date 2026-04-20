@@ -11,7 +11,7 @@ IDs `9008`, `900e`, `901d`) to upload a flash loader and use it to flash images.
 ### Linux
 
 ```bash
-sudo apt install libxml2-dev libusb-1.0-0-dev libzip-dev meson ninja-build help2man
+sudo apt install libcmocka-dev libxml2-dev libusb-1.0-0-dev libzip-dev meson ninja-build help2man
 meson setup build
 meson compile -C build
 ```
@@ -21,7 +21,7 @@ meson compile -C build
 For Homebrew users:
 
 ```bash
-brew install libxml2 libusb libzip meson ninja help2man
+brew install cmocka libxml2 libusb libzip meson ninja help2man
 meson setup build
 meson compile -C build
 ```
@@ -29,7 +29,7 @@ meson compile -C build
 For MacPorts users:
 
 ```bash
-sudo port install libxml2 libusb libzip meson ninja help2man
+sudo port install cmocka libxml2 libusb libzip meson ninja help2man
 meson setup build
 meson compile -C build
 ```
@@ -47,6 +47,7 @@ pacman -S help2man
 pacman -S mingw-w64-x86_64-gcc
 pacman -S mingw-w64-x86_64-meson
 pacman -S mingw-w64-x86_64-ninja
+pacman -S mingw-w64-x86_64-cmocka
 pacman -S mingw-w64-x86_64-libusb
 pacman -S mingw-w64-x86_64-libxml2
 pacman -S mingw-w64-x86_64-libzip

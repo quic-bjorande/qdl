@@ -1,1 +1,2 @@
 option('VERSION', type: 'string', value: '', description: 'Project version')
+option('unit_tests', type: 'feature', value: 'auto', description: 'Build cmocka unit tests')
