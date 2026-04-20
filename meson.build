@@ -85,6 +85,29 @@ qdl_ks_exe = executable('qdl-ks',
 )
 
 # -- tests ---
+flashmap_zip_unit_test_sources = files(
+  'tests/test_flashmap_zip.c',
+  'flashmap.c',
+  'file.c',
+  'json.c',
+  'program.c',
+  'patch.c',
+  'sparse.c',
+  'util.c',
+)
+
+flashmap_zip_unit_test_exe = executable('test_flashmap_zip',
+  sources : flashmap_zip_unit_test_sources + [version_h],
+  dependencies : [libxml_dep, libzip_dep, cmocka_dep],
+  include_directories : inc
+)
+
+test(
+  'Unit flashmap zip',
+  flashmap_zip_unit_test_exe,
+  protocol : 'tap'
+)
+
 json_unit_test_sources = files(
   'tests/test_json.c',
   'json.c',
