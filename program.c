@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <libgen.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -18,7 +19,6 @@
 #include "program.h"
 #include "file.h"
 #include "qdl.h"
-#include "oscompat.h"
 #include "firehose.h"
 #include "sparse.h"
 #include "gpt.h"
@@ -181,11 +181,31 @@ static int program_resolve_path(struct firehose_op *program, const char *program
 		}
 	}
 
+	/* Look for the file adjacent to the program XML */
+	len = strlen(program_file) + 1;
+	program_file_copy = alloca(len);
+	memcpy(program_file_copy, program_file, len);
+	program_dir = dirname(program_file_copy);
+	if (strcmp(program_dir, ".")) {
+		ret = snprintf(candidate, sizeof(candidate), "%s/%s", program_dir, filename);
+		if (ret < 0 || (size_t)ret >= sizeof(candidate))
+			return -ENAMETOOLONG;
+
+		if (!access(candidate, F_OK)) {
+			resolved = strdup(candidate);
+			if (!resolved)
+				return -ENOMEM;
+			free((void *)program->filename);
+			program->filename = resolved;
+		}
+	}
+
 	return 0;
 }
 
 static int load_program_tag(struct list_head *ops, xmlNode *node, bool is_nand,
-			    bool allow_missing, struct qdl_zip *zip, const char *incdir)
+			    bool allow_missing, struct qdl_zip *zip,
+			    const char *program_file, const char *incdir)
 {
 	struct firehose_op *program;
 	struct qdl_file file = {};
@@ -284,7 +304,8 @@ int program_load_xml(struct list_head *ops, xmlDoc *doc, struct qdl_zip *zip, co
 		if (!xmlStrcmp(node->name, (xmlChar *)"erase"))
 			errors = load_erase_tag(ops, node, is_nand);
 		else if (!xmlStrcmp(node->name, (xmlChar *)"program"))
-			errors = load_program_tag(ops, node, is_nand, allow_missing, zip, incdir);
+			errors = load_program_tag(ops, node, is_nand, allow_missing, zip,
+						  program_file, incdir);
 		else {
 			ux_err("unrecognized tag \"%s\" in program-type file \"%s\"\n", node->name, program_file);
 			errors = -EINVAL;
