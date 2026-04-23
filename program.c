@@ -150,12 +150,45 @@ static int program_load_sparse(struct list_head *ops, struct firehose_op *progra
 	return 0;
 }
 
+static int program_resolve_path(struct firehose_op *program, const char *program_file,
+				const char *incdir)
+{
+	char *program_file_copy;
+	char candidate[PATH_MAX];
+	const char *filename = program->filename;
+	const char *program_dir;
+	char *resolved;
+	size_t len;
+	int ret;
+
+	/* Don't attempt to resolve filenames in zip files */
+	if (program->zip)
+		return 0;
+
+	/* Look for the file in include directory */
+	if (incdir) {
+		ret = snprintf(candidate, sizeof(candidate), "%s/%s", incdir, filename);
+		if (ret < 0 || (size_t)ret >= sizeof(candidate))
+			return -ENAMETOOLONG;
+
+		if (strcmp(candidate, filename) && !access(candidate, F_OK)) {
+			resolved = strdup(candidate);
+			if (!resolved)
+				return -ENOMEM;
+			free((void *)program->filename);
+			program->filename = resolved;
+			return 0;
+		}
+	}
+
+	return 0;
+}
+
 static int load_program_tag(struct list_head *ops, xmlNode *node, bool is_nand,
 			    bool allow_missing, struct qdl_zip *zip, const char *incdir)
 {
 	struct firehose_op *program;
 	struct qdl_file file = {};
-	char tmp[PATH_MAX];
 	int errors = 0;
 	int ret;
 
@@ -189,13 +222,9 @@ static int load_program_tag(struct list_head *ops, xmlNode *node, bool is_nand,
 	}
 
 	if (program->filename) {
-		if (incdir) {
-			snprintf(tmp, PATH_MAX, "%s/%s", incdir, program->filename);
-			if (access(tmp, F_OK) != -1) {
-				free((void *)program->filename);
-				program->filename = strdup(tmp);
-			}
-		}
+		ret = program_resolve_path(program, program_file, incdir);
+		if (ret < 0)
+			goto err_free_op;
 
 		ret = qdl_file_open(zip, program->filename, &file);
 		if (ret < 0) {
