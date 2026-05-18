@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
+#include <errno.h>
 #include <getopt.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "qdl.h"
 
@@ -80,6 +82,13 @@ int main(int argc, char **argv)
 	if (optind != argc) {
 		print_usage(stderr);
 		return 1;
+	}
+
+	ret = qdl_ensure_dir(ramdump_path);
+	if (ret < 0) {
+		ux_err("failed to create ramdump directory \"%s\": %s\n", ramdump_path, strerror(errno));
+		ret = 1;
+		goto out_cleanup;
 	}
 
 	ux_init();

@@ -599,6 +599,12 @@ static int qdl_ramdump(int argc, char **argv)
 		return 1;
 	}
 
+	ret = qdl_ensure_dir(ramdump_path);
+	if (ret < 0) {
+		ux_err("failed to create ramdump directory \"%s\": %s\n", ramdump_path, strerror(errno));
+		return 1;
+	}
+
 	ux_init();
 
 	qdl = qdl_init(qdl_dev_type);

@@ -185,6 +185,25 @@ if cmocka_dep.found()
     env: ['CMOCKA_MESSAGE_OUTPUT=TAP'],
   )
 
+  test_util = executable('test_util',
+    sources : [
+      'tests/test_util.c',
+      'util.c',
+      version_h,
+    ],
+    dependencies : common_dep + [cmocka_dep],
+    include_directories : inc,
+    c_args : ['-DQDL_TEST_UTIL_MOCK_FS'],
+  )
+
+  test(
+    'utility helpers',
+    test_util,
+    suite: 'unit',
+    protocol: 'tap',
+    env: ['CMOCKA_MESSAGE_OUTPUT=TAP'],
+  )
+
   test_contents_xml = executable('test_contents_xml',
     sources : [
       'tests/test_contents_xml.c',

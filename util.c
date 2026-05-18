@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <limits.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <unistd.h>
@@ -19,6 +21,21 @@
 #include "oscompat.h"
 #include "qdl.h"
 #include "version.h"
+
+#ifdef QDL_TEST_UTIL_MOCK_FS
+int qdl_test_mkdir(const char *path);
+int qdl_test_stat(const char *path, struct stat *st);
+#define qdl_mkdir(path) qdl_test_mkdir(path)
+#define qdl_stat(path, st) qdl_test_stat(path, st)
+#else
+#ifdef _WIN32
+#include <direct.h>
+#define qdl_mkdir(path) _mkdir(path)
+#else
+#define qdl_mkdir(path) mkdir(path, 0777)
+#endif
+#define qdl_stat(path, st) stat(path, st)
+#endif
 
 static uint8_t to_hex(uint8_t ch)
 {
@@ -69,6 +86,133 @@ void print_hex_dump(const char *prefix, const void *buf, size_t len)
 
 		printf("%s %04x: %s\n", prefix, i, line);
 	}
+}
+
+static bool qdl_path_is_sep(char ch)
+{
+#ifdef _WIN32
+	return ch == '/' || ch == '\\';
+#else
+	return ch == '/';
+#endif
+}
+
+#ifdef _WIN32
+static size_t qdl_unc_root_len(const char *path)
+{
+	size_t i;
+	size_t start;
+
+	if (!qdl_path_is_sep(path[0]) || !qdl_path_is_sep(path[1]))
+		return 0;
+
+	i = 2;
+	while (qdl_path_is_sep(path[i]))
+		i++;
+	if (!path[i])
+		return 2;
+
+	start = i;
+	while (path[i] && !qdl_path_is_sep(path[i]))
+		i++;
+	if (i == start)
+		return 2;
+
+	while (qdl_path_is_sep(path[i]))
+		i++;
+	if (!path[i])
+		return 2;
+
+	start = i;
+	while (path[i] && !qdl_path_is_sep(path[i]))
+		i++;
+	if (i == start)
+		return 2;
+
+	return i;
+}
+#endif
+
+static int qdl_mkdir_one(const char *path)
+{
+	struct stat st;
+
+	if (qdl_mkdir(path) == 0)
+		return 0;
+
+	if (errno != EEXIST)
+		return -1;
+
+	if (qdl_stat(path, &st) < 0)
+		return -1;
+
+	if (!S_ISDIR(st.st_mode)) {
+		errno = ENOTDIR;
+		return -1;
+	}
+
+	return 0;
+}
+
+int qdl_ensure_dir(const char *path)
+{
+	char tmp[PATH_MAX];
+	size_t root_len = 0;
+	size_t start;
+	size_t len;
+	size_t i;
+	int ret;
+
+	if (!path || path[0] == '\0') {
+		errno = EINVAL;
+		return -1;
+	}
+
+	len = strlen(path);
+	if (len >= sizeof(tmp)) {
+		errno = ENAMETOOLONG;
+		return -1;
+	}
+
+	memcpy(tmp, path, len + 1);
+
+#ifdef _WIN32
+	if (isalpha((unsigned char)tmp[0]) && tmp[1] == ':')
+		root_len = qdl_path_is_sep(tmp[2]) ? 3 : 2;
+	else
+		root_len = qdl_unc_root_len(tmp);
+	if (root_len == 0 && qdl_path_is_sep(tmp[0]))
+		root_len = 1;
+#else
+	if (tmp[0] == '/')
+		root_len = 1;
+#endif
+
+	while (len > root_len && qdl_path_is_sep(tmp[len - 1]))
+		tmp[--len] = '\0';
+
+	if (len == root_len)
+		return qdl_mkdir_one(tmp);
+
+	start = root_len;
+	if (root_len > 1 && qdl_path_is_sep(tmp[root_len]))
+		start++;
+
+	for (i = start; tmp[i]; i++) {
+		if (!qdl_path_is_sep(tmp[i]))
+			continue;
+
+		tmp[i] = '\0';
+		ret = qdl_mkdir_one(tmp);
+		tmp[i] = '/';
+		if (ret < 0)
+			return ret;
+
+		while (qdl_path_is_sep(tmp[i + 1]))
+			i++;
+	}
+
+	return qdl_mkdir_one(tmp);
 }
 
 unsigned int attr_as_unsigned(xmlNode *node, const char *attr, int *errors)
